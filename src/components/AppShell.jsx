@@ -1,17 +1,55 @@
-import React from 'react'
-import { Camera, FileText, Upload, BarChart3, Settings, Menu, X } from 'lucide-react'
-import { useState } from 'react'
+import React from 'react';
+import { 
+  Camera, 
+  FileText, 
+  Upload, 
+  BarChart3, 
+  Settings, 
+  Menu, 
+  X, 
+  LogOut, 
+  User, 
+  Link as LinkIcon,
+  PuzzleIcon
+} from 'lucide-react';
+import { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { useNavigate } from 'react-router-dom';
 
 export function AppShell({ children, currentView, onViewChange }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, profile, signOut } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const navigate = useNavigate();
 
   const navigation = [
     { name: 'Upload Photos', icon: Upload, id: 'upload' },
     { name: 'Photo Gallery', icon: Camera, id: 'photos' },
     { name: 'Generate Reports', icon: FileText, id: 'reports' },
     { name: 'Analytics', icon: BarChart3, id: 'analytics' },
+    { name: 'Integrations', icon: LinkIcon, id: 'integrations', proOnly: true },
     { name: 'Settings', icon: Settings, id: 'settings' },
-  ]
+  ];
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      showSuccess('Signed out successfully');
+      navigate('/login');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      showError('Failed to sign out');
+    }
+  };
+
+  // Filter navigation items based on subscription tier
+  const filteredNavigation = navigation.filter(item => {
+    if (item.proOnly && profile?.subscription_tier === 'free') {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="flex h-screen">
@@ -46,12 +84,12 @@ export function AppShell({ children, currentView, onViewChange }) {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-2">
-            {navigation.map((item) => (
+            {filteredNavigation.map((item) => (
               <button
                 key={item.id}
                 onClick={() => {
-                  onViewChange(item.id)
-                  setSidebarOpen(false)
+                  onViewChange(item.id);
+                  setSidebarOpen(false);
                 }}
                 className={`
                   w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors
@@ -69,15 +107,23 @@ export function AppShell({ children, currentView, onViewChange }) {
 
           {/* User info */}
           <div className="p-4 border-t border-white/20">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 mb-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <span className="text-white font-medium">JD</span>
+                <User className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-white font-medium">John Doe</p>
-                <p className="text-white/70 text-sm">Pro Plan</p>
+                <p className="text-white font-medium">{profile?.name || user?.email}</p>
+                <p className="text-white/70 text-sm capitalize">{profile?.subscription_tier || 'Free'} Plan</p>
               </div>
             </div>
+            
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sign Out</span>
+            </button>
           </div>
         </div>
       </div>
@@ -94,7 +140,7 @@ export function AppShell({ children, currentView, onViewChange }) {
               <Menu className="w-6 h-6" />
             </button>
             <h2 className="text-2xl font-bold text-white">
-              {navigation.find(item => item.id === currentView)?.name || 'Dashboard'}
+              {filteredNavigation.find(item => item.id === currentView)?.name || 'Dashboard'}
             </h2>
             <div className="text-white/70 text-sm">
               {new Date().toLocaleDateString()}
@@ -108,5 +154,5 @@ export function AppShell({ children, currentView, onViewChange }) {
         </main>
       </div>
     </div>
-  )
+  );
 }
